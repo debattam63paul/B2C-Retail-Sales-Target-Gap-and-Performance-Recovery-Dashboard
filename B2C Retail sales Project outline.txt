@@ -1,0 +1,209 @@
+B2C Retail sales Target gap and Performance Recovery Dashboard
+Analysis Period : Jan'24 - Dec'25
+
+Business Problems:
+	i) Are we achieving our sales targets?
+	ii) Which regions, stores, Product categories and products are underperforming?
+	iii) Which is causing the Target Gap?
+	iv) Which actions should we take to recover lost sales and improve performance?
+
+Datasets:
+1. Store-Master (information about stores in different regions across india)
+2. Product-Master (information about all products across different stores)y 
+3. Target_Table (Product specific monthly target sales of each stores)
+4. Sales_Fact (Product specific monthly actual sales of each stores)
+
+Data Cleaning using Power Query
+1. Store-Master Table
+	i) Store_size column contains some text including units sq ft.
+		Make column datatype as text.
+		replace sq ft with blank.
+		trim and clean the text.
+		Make column datatype as number.
+
+	ii)  Store_Open_Date contains some text formatted with mm-dd-yy date.
+		Change datatype to date and English(United States) as Locale.
+		2 Null store open date are there. Don't remove those rows.
+
+	iii) Store_name column contains Same store with different names, "Kolkata High Street 01" and "Kolkata HighStreet 01".
+		Replace "Kolkata High Street 01" with "Kolkata HighStreet 01". Match entire cell contents.
+
+	iv) Region column contains "East","Eest".
+		Replace "Eest" with "East". Match entire cell contents.
+
+	v) City column contains "Calcutta", "Kolkata".
+		Replace "Calcutta" with "Kolkata". Match entire cell contents.
+
+	vi) Store_Type column contains "High Street", "High-Street".
+		Replace "-" with space.
+
+	viii) Trim, Clean, Capitalize each word to each text columns store_id, store_name, Region, City, Store_Type and Store_Manager.
+
+	ix) Make Store_id column as Uppercase.
+
+	x) Replace null with Unknown for store_name, Region, city, Store_Type and Store_Manager columns.
+
+	xi) 2 Duplicate rows found. Simply remove them.
+
+	xii) ST001, ST013 and ST019 store_id contains conflicting info in different rows. Flag those rows.
+
+	DATA VALIDATION FLAGS FOR INVESTIGATION
+	i)Same store_id but different info in different rows.
+
+
+2. Product-Master Table
+	i) List_Price_INR column contains some values as text with INR at suffix.
+		Make column datatype as text.
+		replace INR with blank.
+		trim and clean the text.
+		make column datatype as decimal.
+	ii) Standard_cost_INR column has null values for 2 products, keep it and add it to validation flag for further review.
+	iii) Trim, Clean and Capitalize each word for Product_id, Product_name, Category, Subcategory, Brand and Product_status columns.
+	iv) Make Product_id column as Uppercase.
+	v) Product_Name column has "Xiaomi Smartphone Essential 1" product with different names. Replace the wrong name with appropriate.
+	vi) Category column contains "Fashion","Fashions", "Home Appliances","Home Appliancess", "Soprt & Outdoor","Sports & Outdoor","Sports & Outdoors".
+		Replace "Fashions" with "Fashion".
+		Replace "Home Appliances" and "Home Appliancess" with "Home Appliance". For both, match entire cell contents.
+		Replace "Mobile Phones" with "Mobile Phone".
+		Replace "Sport & Outdoor","Sports & Outdoor" with "Sports & Outdoors". For both, match entire cell contents.
+	vii) For text columns Product_name, category, subcategory, brand, product_status - replace null with Unknown.
+	viii) 5 Duplicate Rows are there. Delete them.
+	ix) Standard_cost_inr column has null values. Don't delete those rows.
+	x) Two rows have null product_id.
+	xi) 5 Conflicting rows are there with same product_id but different product info.
+
+	VALIDATION FLAGS FOR INVESTIGATION
+	i) Rows with null product_ids.
+	ii) Same product_id but different info in different rows.
+	iii) Standard_cost_inr with null values.
+	iv) Product_status column with Unknown category.
+
+
+3. Target Table 
+	i) There are so many target months out of analysis range. We will consider only Jan'24-Dec'25 range, but we don't delete the rest.
+	ii) Convert target_month column datatype from whole number to date.
+	iii) Target_sales_inr column has some values as text and inr in suffix.
+		Make column datatype as text.
+		replace INR with Blank.
+		trim and clean the text.
+		make column datatype as decimal.
+	iv) Target_units column has -ve/0 values. Don't delete those rows but mark them as a flag.
+	v) Target_sales column has 2 null values. Don't delete those rows but mark them as a flag.
+	v) Target_growth_pct has null values. Don't delete these rows.
+	vi) Same store_id contains different spelling like ST-001 and ST001. Replace "-" with blank.
+	vii) Same product_id contains different spelling like PR-001 and PR001. Replace "-" with blank.
+	viii) Trim and clean the product_id and store_id columns and make them uppercase.
+	ix) Find duplicate rows. No duplicates are there in Target table.
+	x) 2 conflicting rows are there with duplicate {target_month,store_id,product_id} combinations. Don't delete those rows but mark them as a flag.
+
+	VALIDATION FLAGS FOR INVESTIGATION
+	i) Atleast anyone of target_month,store_id and product_id column having null/blank value.
+	ii) {target_month,store_id,product_id} together should be unique. so, if any duplicacy appears, it will be conflicting.Instead of deleting, flag those rows for further investigation.
+	iii) Null/0/-ve Target_units, target_sales_inr.
+
+
+4. Sales_Fact Table (Consists of Monthly summerised sales records of different stores and products)
+	i) Convert sales_month datatype as date, avg.discount_pct datatype as %, and transaction_line datatype as whole_number.
+
+	ii) Units_sold column contains some values as text with pcs in suffix.
+		Make column datatype as text.
+		replace pcs with Blank.
+		trim and clean the text.
+		make column datatype as whole number.
+	
+	iii) Similar problems with gross_sales_inr, net_sales_inr and cogs_inr and gross_profit_inr.
+		Replace /- and INR with blank and assign datatype as decimal with the same process above.
+	iv) Store_id contains same store with different spelling like ST-001,ST001. Same for product_id also. PR-001,PR001 like this.
+		Replace "-" with blank for these two columns.
+		Trim,Clean and make these two columns contents as Uppercase.
+	v) 51 duplicate rows are found. Delete those rows.
+	vi) gross_sales, cogs, unit_sold columns have some value<=0. Keep as it is because they are not necessary for our calculations.
+	vii) 1 blank discount pct and some discount pct near 100% or greater than 100%. Keep as it is because they are not necessary for our calculations.
+	
+	Create common mapping key for sales_fact and target table using storeid-productid-month and bring target informations to sales_fact table using Index.
+	Bring store_info and product_info from store_master and product_master tables to sales_fact table by mapping store_id and product_id.
+	
+	Formulas:
+	i) gross-sales = units_sold * list_price
+	ii) net-sales = gross_sales - discount_amt
+	iii) COGS = units_sold * standard_cost
+	iv) gross_profit = net_sales - COGS
+
+	Data-Quality Issues:
+	i) Some net_sales are -ve. --> Mark them as sales_flag.
+	ii) Some net_sales or standard_cost are -ve --> Mark them as Profit_flag.
+	iii) Some products have no target info --> Mark them as Target flag.
+	iv) Some sales_records have store_id,product_id blank. Sales_month is out of analysis range. Mark them as Data_Validation_flag.
+
+	
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+KPIs: (Take help of helper cell to make kpi cards dynamic in dashboard)
+	
+	i) Net Sales --> Calculate total net sales by considering Data_validation_flag and sales_flag
+	ii) Target Sales --> Calculate total target sales by considering Data_validation_flag and target_flag.
+	iii) Target Achievement % --> Create Target Achievement calculated field in pivot table using (Net sales/Target sales) and apply data validation, sales and target flag on it.
+	iv) Sales Shortfall --> Create a calculated field sales shortfall in pivot table by MAX(0,target_sales-Net_sales) and apply data_validation,sales,target flags on it.
+	v) Gross Profit --> Calculate Gross Profit by considering Profit flag.
+	vi) Gross Profit Margin --> Create a calculated field Gross Profit Margin in pivot table by (Gross_profit_INR/Net_Sales_INR) and apply data_validation,sales,Profit flags on it.
+
+In Pivot table Analyze, Field,Items & sets, make four calculated field for ease of calculation.
+	i) Target Achievement % --> =Net_Sales_INR/Target_Sales_INR
+	ii) Sales Shortfall --> = MAX(0,Target_Sales_INR-Net_Sales_INR)/10000000. In pivot table, make it like "₹ 3.45 Cr" by right click on pivot table --> Number format --> Custom --> Write ₹ 0.00 Cr.
+	iii) Gross Profit Margin --> =Gross_Profit_INR/Net_Sales_INR. In pivot table make it % by right click --> number format --> %.
+	iv) Severity --> =IF('Target Achievement %'>=100%,4,
+				IF(OR(AND('Target Achievement %'<70%,'Sales Shortfall'>=0.1),AND('Target Achievement %'<85%,'Sales Shortfall'>=0.2)),1,
+					IF(OR('Target Achievement %'<85%,'Sales Shortfall'>=0.2),2,3)))
+
+All the calculated fields will be shown in Every pivot table fields and we can take them for ease of Calculations.
+
+
+Slicers : 
+	i) Year -->In sales_fact filter only 2024-2025 data using data validation and make slicer. Right click on slicer --> slicer setting --> Hide items with no data. Adjust for one row 2 columns.
+	ii) Region --> same process. Adjust for one row and six columns.
+
+
+Charts :
+	i) Actual Sales vs Target Sales Trend 
+	ii) MoM Net sales growth  (Current_Month_Sales - Previous_Month_Sales)/Previous_Month_Sales
+	ii) Product Category-wise Sales Contribution 
+	iv) Target Achievement by Product Category --> Right click on total value in pivot table --> sort --> Largest to smallest.
+	v) Sales Shortfall by Product Category
+	vi) Top 5 Stores by Sales Shortfall  --> Store column in pivot table --> filters --> Value filters --> Top 10. Right click on total value in pivot table --> sort --> smallest to largest.
+	vii) Top 5 Products by sales Shortfall
+	
+
+Give proper name of all the charts and connect charts with slicers by slicer --> Report connections.
+
+Tables :
+	i)Sales Performance Recovery Priority List (List will show 5 stores with lowest target achievement and top 3 products having highest sales shortfall within each of those stores)
+		In store_id column in pivot table, Apply value filter --> Bottom 5 based on target_achievement %.
+		In Product_id column in pivot table, Apply value filter --> Top 3 based on sales shortfall.
+
+	ii)Sales Recovery Action Matrix
+
+
+
+Trgt Achivment  | Shortfall  | Severity_Index |  Severity 
+>=100%      	    ----	  4		On-Target
+85%-100%	    >=0.2 Cr	  2		High
+85%-100%	    <0.2 Cr	  3		Moderate
+70%-85%		    <0.2 Cr	  2		High
+70%-85%		    >0.2 Cr	  1		Critical
+>70%		    <0.1 Cr	  1		Critical
+>70%		    >0.1 Cr	  1		Critical
+
+	
+
+
+	
+
+
+
+
+
+
+
+
+
+	
